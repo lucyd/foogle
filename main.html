@@ -1,0 +1,358 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+	    html { height: 100% }
+            body { height: 100%; margin: 0; padding: 0 }
+	    #map_canvas { height : 100% }
+    </style>
+    <script type="text/javascript"
+	      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC35vP5uWtmFx8Lp6VbV47eH4yeOaci73M&sensor=false">
+    </script>
+
+</head>
+<body>
+<div id="fb-root"></div>
+<script>
+  // Additional JS functions here
+  window.fbAsyncInit = function() {
+	      FB.init({
+		            appId      : '331752430258926', // App ID
+			    //appId	: '465037276882874',
+		            channelUrl : 'http://web.iiit.ac.in/~sreenatha.b/channel.html', // Channel File
+		            status     : true, // check login status
+	 	            cookie     : true, // enable cookies to allow the server to access the session
+		            xfbml      : true  // parse XFBML
+		     });
+
+	          // Additional init code here
+
+	      FB.getLoginStatus(function(response) {
+		      if (response.status === 'connected') {
+		     	 // connected
+		      	var button = document.getElementById("mybutton");	
+			button.value="Logout";
+			button.onclick=function(){ logout(); };
+		      }
+		      else if (response.status === 'not_authorized') {
+		     	// not_authorized
+		      	var button = document.getElementById("mybutton");	
+			button.value="Login";
+			button.onclick=function(){ login(); };
+			alert("You are not authorized. Please click on login button");
+			//login();
+		      }
+		      else {
+		     	 // not_logged_in
+		      	var button = document.getElementById("mybutton");	
+			button.value="Login";
+			button.onclick=function(){ login(); };
+		      }
+		});
+	  };
+	var my_map;
+	var findHandle;
+	//If user clickes Stalk Users and then clicks on Find users, stalk() should stop
+	var stalkHandle;
+	var myMarkers = new Array();
+	var place = new Object();
+	var range = new Object();
+	var findRunning = new Boolean("true");
+	var stalkRunning = new Boolean("false");
+	place.lat = "";
+	place.lng = "";
+	// Load the facebook javascript SDK Asynchronously
+  	(function(d){
+        	var js, id = 'facebook-jssdk', ref = d.getElementsByTagName('script')[0];
+        	if (d.getElementById(id)) {return;}
+        	js = d.createElement('script'); js.id = id; js.async = true;
+        	js.src = "http://connect.facebook.net/en_US/all.js";
+        	ref.parentNode.insertBefore(js, ref);
+       }(document));
+
+	function login() {
+	    FB.login(function(response) {
+	     if (response.authResponse) {
+	    	 // connected
+	        var button = document.getElementById("mybutton");
+		mybutton.value="Logout";	
+		mybutton.onclick=function() {logout(); };	
+	    	//foogle_main();
+	     }
+	     else {
+	         // cancelled
+	     	alert("Please login to your facebook account");
+	     }
+	  },{scope:'user_location,user_photos,user_checkins,user_status,friends_education_history,friends_hometown,friends_activities,friends_work_history,friends_location,friends_photos,friends_status,friends_checkins'});
+	}
+	
+	function logout() {
+		FB.logout(function(response) {
+		   if(response.status !== "connected" && response.status !=="not_authorized") {
+	        	var button = document.getElementById("mybutton");
+			button.value="Login";	
+			button.onclick=function(){ login(); };	
+		   }
+		});
+	}
+
+	function locateFriend(stalkfriendId){
+		for(i=0;i<myMarkers.length;i++)
+		{
+			myMarkers[i].setMap(null);
+		}
+		FB.api("/"+stalkfriendId+"/locations",function(responseTwo){
+				if(responseTwo.data.length == 0)
+				{
+					alert("No locations found");
+				}
+				else
+				{
+					for(i=0;i<responseTwo.data.length;i++)
+					{
+						var temp = responseTwo.data[i];
+						(function(localresponse){
+							var latlng = new google.maps.LatLng(localresponse["place"]["location"]["latitude"],localresponse["place"]["location"]["longitude"]);
+							/*
+							var friendLocation = localresponse["place"]["location"];
+							var friendMarkerTitle = "";
+							var locationdict = ["street",""];
+							for (i=0;i<5;i++)
+							{
+								var someaddress = friendLocation[Object.keys(friendLocation)[i]];
+								if((someaddress !== undefined) && (someaddress !== ""))
+								{
+									alert("i="+i+"-"+friendMarkerTitle);
+									friendMarkerTitle += friendLocation[Object.keys(friendLocation)[i]];
+									friendMarkerTitle += ", ";
+								}
+							}
+							*/
+							var marker = new google.maps.Marker({
+								position: latlng,
+								//title: friendMarkerTitle.substring(0,friendMarkerTitle.length-2),
+								map: my_map
+							});
+							myMarkers.push(marker);
+						})(temp);
+					}
+				}
+		});
+	}
+
+	function stalk() {
+		stalkRunning = true;
+		findRunning = false;
+		var gmap = document.getElementById("map_canvas");
+		gmap.style.width="80%";
+		var mapOptions = {
+			center: new google.maps.LatLng(14.3667, 78.4667),
+			zoom: 4,
+			mapTypeId: google.maps.MapTypeId.ROADMAP
+		};
+		my_map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+		FB.api('/me/friends',function(response){
+			if(response.data.length == 0)
+			{
+				alert("You have no friends to stalk");
+				return false;
+			}
+			alert("You have "+response.data.length+" friends. Click on a friend-button to locate the places he/she has been to");
+			var listItem = document.getElementById("friendList");
+			listItem.style.width="15%";
+			for(i=0;i<response.data.length;i++)
+			{
+				var temp = response.data[i];
+				(function(localresponse){
+					var stalkfriendId = localresponse["id"];
+					var newItem = document.createElement("li");
+					newItem.style.width="100%";
+					var friendItem = document.createElement("input");
+					friendItem.type="button";
+					friendItem.value = response.data[i]["name"];
+					friendItem.style.width="100%";
+					friendItem.onclick = function(){ locateFriend(stalkfriendId); };
+					//alert(response.data[i]["name"]);
+					//friendItem.href = "#";
+					newItem.appendChild(friendItem);
+					listItem.insertBefore(newItem,null);
+				})(temp);
+			}
+		});
+
+	}
+
+	function find() {
+		findRunning = true;
+		stalkRunning = false;
+		FB.getLoginStatus(function(response) {
+				if (response.status !== "connected")
+				{
+					alert("Please login");
+				}
+				else if (response.status === 'connected')
+				{
+					var address = document.getElementById("address").value;
+					var range = document.getElementById("range").value;
+					if(address.length === 0)
+					{
+						alert("Enter location");
+						return False;
+					}
+					if(!(document.getElementById("range").value))
+					{
+						alert("Enter latitude-longitude range");
+						return false;
+					}
+					var gmap = document.getElementById("map_canvas");
+					gmap.style.width="100%";
+					var mapOptions = {
+						center: new google.maps.LatLng(14.3667, 78.4667),
+						zoom: 4,
+						mapTypeId: google.maps.MapTypeId.ROADMAP
+					};
+					my_map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+					//Get the geocoded latitude and longitude values of place
+					var geo = new google.maps.Geocoder;
+					geo.geocode({ "address": address} ,function(results,status){
+						if(status == google.maps.GeocoderStatus.OK)
+						{
+							my_map.setCenter(results[0].geometry.location);
+							place.lat = results[0].geometry.location.lat();
+							place.lng = results[0].geometry.location.lng();
+						}
+					});
+					FB.api('/me/friends',function(response){
+						alert("Total No of friends = "+response.data.length);
+						if(response.data.length !== 0)
+						{
+							var friendsLocations = new Array();
+							for(i=0;i<response.data.length;i++)
+							{
+								var temp = response.data[i];
+								(function localFriend(localfriendId) { 
+								FB.api("/"+response["data"][i]["id"],function(responseTwo){
+									if(findRunning === true){
+									if(responseTwo["location"])
+									{
+										var friendGeo = new google.maps.Geocoder;
+										friendGeo.geocode({ "address": responseTwo["location"]["name"]},
+											function(results,status){
+												if(findRunning === true)
+												{
+												if(status == google.maps.GeocoderStatus.OK)
+												{
+													lat = results[0].geometry.location.lat();
+													lng = results[0].geometry.location.lng();
+													if((Math.abs(lat - place.lat)+Math.abs(lng - place.lng)) <= range)
+													{
+														var myfriendname = localfriendId["name"];
+														var myfriendlink = "<a target='_blank' href="+
+														"https://www.facebook.com/"+localfriendId["id"]+
+														">View Profile of "+myfriendname+"</a>";
+														friendsLocations.push(myfriendlink);
+														var infowindow = new google.maps.InfoWindow(
+															{content: friendsLocations.join('<br/>') });
+														var latlng = new google.maps.LatLng(lat, lng);
+														var marker = new google.maps.Marker({
+																position: latlng,
+																title: "Click me",
+																map: my_map 
+															});
+														myMarkers.push(marker);
+														google.maps.event.addListener(marker, 'click', function(){ infowindow.open(my_map,marker) });
+													}
+												}
+												}
+											});
+									}
+									}
+								});
+								})(temp);
+							}
+						}
+						else
+						{
+							alert("No friends found");
+						}
+					});
+				}
+		});
+	}
+
+	/*COMMENTED
+	function locate(userId) {
+		FB.api('/'+userId+'/locations', function(response){ 
+			if(response.data.length == 0)
+			{
+				alert("No locations found");
+			}
+			else
+			{
+				var locations = new Array();
+				for(i=0;i<response.data.length;i++)
+				{
+					locations.push(response.data[i]["place"]["location"]["latitude"]+"|"+response.data[i]["place"]["location"]["longitude"]);
+				}
+				document.location.href= "./gmap.html?locations="+locations.join('&');
+			}
+			logout();
+		});
+	}
+	
+	function foogle_main() {
+		var likes_count = 0;
+		var random_likes = [];
+	    	var coOrdinates=[];
+	    	var userIds=[];
+		console.log('Foogle welcomes you!');
+		FB.api('/me/friends',function(response) {
+			if(response.data.length !== 0)	
+			{
+				var friends=document.getElementById("myfriends");
+				friends.innerHTML = "<ol>";
+				for(i=0;i<response.data.length;i++)
+				{
+					friends.innerHTML += "<li><a onclick='"+"locate("+response.data[i]["id"]+")'>"+response.data[i]["name"]+"</a></li>";
+					//friends.innerHTML += "<li><a onclick=\"locate()\">"+response.data[i]["name"]+"</a></li>";
+				}
+				friends.innerHTML += "</ol>";
+			}
+		});
+	}
+	*/
+
+</script>
+
+<div id="loginUI" style="position:relative;text-align:center">
+	<input type="button" style="text-align:center; background-color:#D6E3E3; font-size:120%; border:2px solid; border-radius:5px;" id="mybutton" ></input>
+	<input type="button" onclick="stalk()" style="background-color:#D6E3E3; font-size:120%; border:2px solid; border-radius:5px;" id="stalk" value="Locate friends"></input>
+	<input type="button" onclick="find()" style="background-color:#D6E3E3; font-size:120%; border:2px solid; border-radius:5px;" id="find" value=" Find friends"></input>
+	</br>
+	Location
+	<input type="text" id="address" value="Hyderabad"></input>
+	Lat-Long Range
+	<input type="text" id="range" value=""></input>
+</div>
+<!--
+<table style="width:100%; height:100%">
+	<tr width="100%" height="0" style="margin:0; padding-top:0">
+		<td width="20%" style="text-align:center" id="query">
+			<input type="text" id="address" style="width:20%" value="Hyderabad"></input>
+		</td>
+	</tr>
+	<tr>
+		<td width="90%" style="margin:0; padding:0">
+			<div id="map_canvas" style="width:100%; height:100%; display:block"></div>
+		</td>
+	</tr>
+</table>
+-->
+<div style="width:100%; height:90%">
+<div id="map_canvas" style="float:left; width:90%; height:100%"></div>
+<ol  style="float:right" id="friendList"></ol>
+</div>
+</body>
+</html>
