@@ -1,4 +1,1 @@
-foogle
-======
-
-Facebook friend locator
+Foogle is a social webapp that uses Facebook Graph API, Google maps API, Google Geocoding Service to locate your nearby facebook friends on google maps. It is hosted at http://web.iiit.ac.in/~sreenatha.b/foogle.
