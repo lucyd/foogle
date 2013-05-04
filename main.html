@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -41,7 +40,7 @@
 		      	var button = document.getElementById("mybutton");	
 			button.value="Login";
 			button.onclick=function(){ login(); };
-			alert("You are not authorized. Please click on login button");
+			alert("You are not authorized. Allow blocked pop-ups and please click on login button");
 			//login();
 		      }
 		      else {
@@ -156,7 +155,7 @@
 		FB.api('/me/friends',function(response){
 			if(response.data.length == 0)
 			{
-				alert("You have no friends to stalk");
+				alert("You have no friends to locate");
 				return false;
 			}
 			alert("You have "+response.data.length+" friends. Click on a friend-button to locate the places he/she has been to");
