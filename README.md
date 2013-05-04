@@ -1,8 +1,7 @@
-
 Foogle
 ======
 
-Foogle is a social webapp that uses Facebook Graph API, Google maps API and Google Geocoding Service to locate user's nearby facebook friends on google maps. It is hosted at http://web.iiit.ac.in/~sreenatha.b/foogle.
+Foogle is a social webapp(initially designed for mozilla firefox os) that uses Facebook Graph API, Google maps API and Google Geocoding Service to locate user's nearby facebook friends on google maps. It is hosted at http://web.iiit.ac.in/~sreenatha.b/foogle.
 
 Currently, foogle has 2 main functionalities
 
